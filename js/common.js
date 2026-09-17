@@ -1,5 +1,5 @@
-/* Общие утилиты сайта диктантов: разбиение текста на предложения,
-   синтез речи, сравнение ответа ученика с оригиналом и подсчёт оценки.
+/* Общие утилиты сайта словарных викторин: разбор списка слов, проверка
+   ответа ученика (рус → англ) и подсчёт очков в стиле Kahoot.
    Подключается на всех страницах через <script src="js/common.js"></script>
    и доступен как глобальный объект window.Dictation */
 (function (global) {
@@ -16,128 +16,56 @@
     return out;
   }
 
-  // Список частых сокращений, после которых точка НЕ означает конец предложения.
-  var ABBREVIATIONS = ['mr', 'mrs', 'ms', 'dr', 'prof', 'st', 'jr', 'sr', 'vs', 'etc', 'e.g', 'i.e'];
-
-  function splitIntoSentences(text) {
+  // Разбирает список слов вида "русское слово - английский перевод" (по одному
+  // на строку; в качестве разделителя подходят "-", "—", ":", "=" с пробелами
+  // по бокам, либо табуляция). Английскую часть можно указать несколькими
+  // вариантами через "/", например: "быстрый - quick / fast".
+  function parseWordPairs(text) {
     if (!text) return [];
-    var normalized = text.replace(/\r\n/g, '\n').trim();
-    if (!normalized) return [];
+    var delimRe = /\s[-—:=]\s|\t/;
+    return text.replace(/\r\n/g, '\n').split('\n').map(function (line) {
+      var trimmed = line.trim();
+      if (!trimmed) return null;
+      var m = trimmed.match(delimRe);
+      if (!m) return null;
+      var ru = trimmed.slice(0, m.index).trim();
+      var en = trimmed.slice(m.index + m[0].length).trim();
+      if (!ru || !en) return null;
+      return { ru: ru, en: en };
+    }).filter(Boolean);
+  }
 
-    var sentences = [];
-    var current = '';
-    var tokens = normalized.split(/(\s+)/); // сохраняем пробелы, чтобы не терять форматирование
+  function normalizeAnswer(s) {
+    return String(s || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-zа-яё0-9\s'-]/gi, '')
+      .replace(/\s+/g, ' ');
+  }
 
-    for (var i = 0; i < tokens.length; i++) {
-      var tok = tokens[i];
-      current += tok;
-      var trimmedTok = tok.trim();
-      if (/[.!?]["')\]]*$/.test(trimmedTok)) {
-        var wordBefore = trimmedTok.replace(/[.!?"')\]]+$/, '').toLowerCase();
-        var isAbbrev = ABBREVIATIONS.indexOf(wordBefore) !== -1 || /^[a-zA-Z]$/.test(wordBefore);
-        var isDecimalNumber = /^\d+$/.test(wordBefore) && /^\d/.test((tokens[i + 2] || ''));
-        if (!isAbbrev && !isDecimalNumber) {
-          var trimmedCurrent = current.trim();
-          if (trimmedCurrent) sentences.push(trimmedCurrent);
-          current = '';
-        }
-      }
+  // Английское поле может содержать несколько допустимых ответов через "/".
+  function alternativesFor(enField) {
+    return String(enField || '').split('/').map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  // Очки за одно слово (как в Kahoot): за верный ответ — от 500 до 1000 очков
+  // в зависимости от скорости (максимум за первые секунды, плавно убывает
+  // к 20-й секунде), за неверный — 0.
+  function scoreWordRound(enField, studentAnswer, elapsedMs) {
+    var alts = alternativesFor(enField);
+    var normAlts = alts.map(normalizeAnswer);
+    var normAnswer = normalizeAnswer(studentAnswer);
+    var correct = normAnswer.length > 0 && normAlts.indexOf(normAnswer) !== -1;
+    var points = 0;
+    if (correct) {
+      var capped = Math.min(Math.max(elapsedMs || 0, 0), 20000);
+      var speedFactor = 1 - (capped / 20000) * 0.5;
+      points = Math.round(1000 * speedFactor);
     }
-    var rest = current.trim();
-    if (rest) sentences.push(rest);
-    return sentences.filter(function (s) { return s.length > 0; });
+    return { correct: correct, points: points, correctAnswer: alts.join(' / ') };
   }
 
-  function normalizeWord(w) {
-    return w.toLowerCase().replace(/^[^a-zA-Zа-яА-ЯёЁ0-9']+|[^a-zA-Zа-яА-ЯёЁ0-9']+$/g, '');
-  }
-
-  function tokenizeWords(text) {
-    return (text.match(/[\p{L}\p{N}']+/gu) || []);
-  }
-
-  // Пословное сравнение оригинального предложения и ответа ученика через LCS.
-  // Возвращает массив токенов { text, type } где type: 'correct' | 'wrong' | 'missing' | 'extra'
-  // и статистику { correctCount, totalOriginal }.
-  function diffSentence(originalSentence, studentAnswer) {
-    var origWords = tokenizeWords(originalSentence || '');
-    var ansWords = tokenizeWords(studentAnswer || '');
-    var origNorm = origWords.map(normalizeWord);
-    var ansNorm = ansWords.map(normalizeWord);
-
-    var n = origNorm.length, m = ansNorm.length;
-    var dp = [];
-    for (var i = 0; i <= n; i++) {
-      dp.push(new Array(m + 1).fill(0));
-    }
-    for (i = n - 1; i >= 0; i--) {
-      for (var j = m - 1; j >= 0; j--) {
-        if (origNorm[i] && origNorm[i] === ansNorm[j]) {
-          dp[i][j] = dp[i + 1][j + 1] + 1;
-        } else {
-          dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
-        }
-      }
-    }
-
-    var tokens = [];
-    var correctCount = 0;
-    i = 0; var jj = 0;
-    while (i < n && jj < m) {
-      if (origNorm[i] === ansNorm[jj]) {
-        tokens.push({ text: origWords[i], type: 'correct' });
-        correctCount++;
-        i++; jj++;
-      } else if (dp[i + 1][jj] >= dp[i][jj + 1]) {
-        tokens.push({ text: origWords[i], type: 'missing' });
-        i++;
-      } else {
-        tokens.push({ text: ansWords[jj], type: 'extra' });
-        jj++;
-      }
-    }
-    while (i < n) { tokens.push({ text: origWords[i], type: 'missing' }); i++; }
-    while (jj < m) { tokens.push({ text: ansWords[jj], type: 'extra' }); jj++; }
-
-    return { tokens: tokens, correctCount: correctCount, totalOriginal: origWords.length };
-  }
-
-  function scoreDictation(originalSentences, answers) {
-    var totalWords = 0, totalCorrect = 0;
-    var perSentence = originalSentences.map(function (s, idx) {
-      var d = diffSentence(s, answers[idx] || '');
-      totalWords += d.totalOriginal;
-      totalCorrect += d.correctCount;
-      return d;
-    });
-    var percent = totalWords > 0 ? Math.round((totalCorrect / totalWords) * 100) : 0;
-    return { perSentence: perSentence, totalWords: totalWords, totalCorrect: totalCorrect, percent: percent };
-  }
-
-  // Очки за один раунд (как в Kahoot): база за точность (до 800) + бонус за скорость
-  // ответа (до 200, убывает за первые 30 секунд, начисляется только если точность >= 50%).
-  function scoreRound(originalSentence, answerText, elapsedMs) {
-    var d = diffSentence(originalSentence, answerText);
-    var total = d.totalOriginal;
-    var percent = total > 0 ? Math.round((d.correctCount / total) * 100) : 0;
-    var basePoints = Math.round(percent * 8);
-    var speedBonus = 0;
-    if (percent >= 50 && typeof elapsedMs === 'number' && elapsedMs >= 0) {
-      var capped = Math.min(elapsedMs, 30000);
-      speedBonus = Math.round((1 - capped / 30000) * 200);
-    }
-    return {
-      tokens: d.tokens,
-      percent: percent,
-      correctCount: d.correctCount,
-      totalOriginal: total,
-      points: basePoints + speedBonus
-    };
-  }
-
-  /* ---------- Синтез речи (Web Speech API) ---------- */
-
-  var currentUtterance = null;
+  /* ---------- Синтез речи (Web Speech API) — для озвучки правильного ответа ---------- */
 
   function getEnglishVoices() {
     var voices = global.speechSynthesis ? global.speechSynthesis.getVoices() : [];
@@ -154,14 +82,9 @@
     global.speechSynthesis.cancel();
     var utter = new SpeechSynthesisUtterance(text);
     utter.lang = opts.lang || 'en-US';
-    utter.rate = opts.rate || 0.9;
-    if (opts.voiceURI) {
-      var voice = global.speechSynthesis.getVoices().filter(function (v) { return v.voiceURI === opts.voiceURI; })[0];
-      if (voice) utter.voice = voice;
-    }
+    utter.rate = opts.rate || 0.95;
     if (opts.onend) utter.onend = opts.onend;
     if (opts.onerror) utter.onerror = opts.onerror;
-    currentUtterance = utter;
     global.speechSynthesis.speak(utter);
   }
 
@@ -184,10 +107,10 @@
 
   global.Dictation = {
     generateSessionCode: generateSessionCode,
-    splitIntoSentences: splitIntoSentences,
-    diffSentence: diffSentence,
-    scoreDictation: scoreDictation,
-    scoreRound: scoreRound,
+    parseWordPairs: parseWordPairs,
+    normalizeAnswer: normalizeAnswer,
+    alternativesFor: alternativesFor,
+    scoreWordRound: scoreWordRound,
     getEnglishVoices: getEnglishVoices,
     speak: speak,
     cancelSpeech: cancelSpeech,

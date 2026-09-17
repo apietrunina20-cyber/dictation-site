@@ -245,7 +245,83 @@ label { font-size: 13px; font-weight: 700; color: var(--text-muted); display: bl
 
 .center { text-align: center; }
 
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  margin-right: 6px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip {
+  background: var(--surface-muted);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.answered-big {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-top: 12px;
+}
+
+.soundwave {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  height: 60px;
+  margin: 20px 0;
+}
+.soundwave span {
+  display: block;
+  width: 10px;
+  border-radius: 6px;
+  background: var(--primary);
+  animation: wave 1s ease-in-out infinite;
+}
+.soundwave span:nth-child(1) { height: 20px; animation-delay: 0s; }
+.soundwave span:nth-child(2) { height: 40px; animation-delay: 0.1s; }
+.soundwave span:nth-child(3) { height: 60px; animation-delay: 0.2s; }
+.soundwave span:nth-child(4) { height: 40px; animation-delay: 0.3s; }
+.soundwave span:nth-child(5) { height: 20px; animation-delay: 0.4s; }
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.6); }
+  50% { transform: scaleY(1); }
+}
+
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  margin: 24px 0;
+  flex-wrap: wrap;
+}
+.podium-slot {
+  background: var(--surface-muted);
+  border-radius: 14px;
+  padding: 18px 20px;
+  min-width: 110px;
+  text-align: center;
+}
+.podium-1 { order: 2; padding-top: 30px; background: #fef3c7; }
+.podium-2 { order: 1; }
+.podium-3 { order: 3; }
+.podium-medal { font-size: 32px; }
+.podium-name { font-weight: 700; margin-top: 6px; }
+.podium-points { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
 .footer-note { color: rgba(255,255,255,0.8); font-size: 13px; text-align: center; margin-top: 12px; }
 
 a { color: inherit; }
-

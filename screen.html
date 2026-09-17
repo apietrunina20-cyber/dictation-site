@@ -18,7 +18,7 @@
   </div>
 
   <div id="view-nocode" class="card narrow center" style="display:none;">
-    <h1>Нет кода диктанта</h1>
+    <h1>Нет кода игры</h1>
     <p class="muted">Откройте эту страницу по кнопке «Открыть экран для класса» в кабинете учителя.</p>
   </div>
 
@@ -33,22 +33,22 @@
 
   <div id="view-round" class="card center" style="display:none;">
     <div class="sentence-progress" id="round-progress" style="font-size:20px;"></div>
-    <div class="soundwave" id="soundwave"><span></span><span></span><span></span><span></span><span></span></div>
-    <p class="muted" style="font-size:18px;">Слушайте внимательно и печатайте на своём устройстве</p>
+    <p class="muted" style="font-size:16px; margin-bottom:6px;">Переведите на английский:</p>
+    <div class="prompt-word" id="round-word"></div>
     <div class="answered-big" id="round-answered"></div>
   </div>
 
   <div id="view-round-reveal" class="card center" style="display:none;">
     <div class="sentence-progress" id="reveal-progress-screen" style="font-size:18px;"></div>
-    <p class="muted" style="font-size:15px; margin-bottom:4px;">Правильный вариант:</p>
-    <div class="diff-sentence" id="reveal-sentence-text" style="text-align:center; font-size:19px; font-weight:600;"></div>
+    <p class="muted" style="font-size:15px; margin-bottom:4px;">Правильный ответ:</p>
+    <div class="diff-sentence" id="reveal-sentence-text" style="text-align:center; font-size:24px; font-weight:700;"></div>
     <div class="divider"></div>
     <h3>Рейтинг</h3>
     <div id="reveal-leaderboard"></div>
   </div>
 
   <div id="view-final" class="card center" style="display:none;">
-    <h1>🏆 Итоги диктанта</h1>
+    <h1>🏆 Итоги игры</h1>
     <div id="final-podium" class="podium"></div>
     <div class="divider"></div>
     <div id="final-leaderboard"></div>

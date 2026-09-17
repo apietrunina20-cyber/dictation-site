@@ -225,7 +225,7 @@
     tag.className = 'tag status-' + (session.status === 'reveal' ? 'playing' : session.status);
     tag.textContent = session.status === 'waiting' ? 'Ожидание'
       : session.status === 'playing' ? 'Идёт игра'
-      : session.status === 'reveal' ? 'Результаты раунда'
+      : session.status === 'reveal' ? 'Результать раунда'
       : 'Завершено';
 
     $('controls-waiting').style.display = session.status === 'waiting' ? 'block' : 'none';
@@ -334,10 +334,12 @@
       var p = participantsCache[id];
       var row = document.createElement('div');
       row.className = 'list-item';
+      var answeredCurrentRound = session && (session.status === 'playing' || session.status === 'reveal') &&
+        typeof p.lastAnsweredIndex === 'number' && p.lastAnsweredIndex >= session.currentIndex;
       var statusHtml;
       if (p.percent !== undefined && p.percent !== null) {
         statusHtml = '<span class="tag status-finished">' + p.correctCount + '/' + p.totalWords + '</span>';
-      } else if (session && (session.status === 'playing' || session.status === 'reveal') && typeof p.lastAnsweredIndex === 'number' && p.lastAnsweredIndex >= session.currentIndex) {
+      } else if (answeredCurrentRound) {
         statusHtml = '<span class="tag status-playing">ответил(а) ✓</span>';
       } else if (session && session.status === 'playing') {
         statusHtml = '<span class="tag">думает…</span>';
@@ -345,9 +347,23 @@
         statusHtml = '<span class="tag">в игре</span>';
       }
       var pointsHtml = '<span class="tag">' + (p.totalPoints || 0) + ' очк.</span>';
+      var warnHtml = (p.tabSwitches > 0)
+        ? '<span class="tag status-warning" title="Уходил(а) со вкладки во время игры — возможно, смотрел(а) перевод на стороннем сайте">⚠️ ' + p.tabSwitches + '</span>'
+        : '';
+      // Ответ ученика на текущий раунд показываем только после того, как он
+      // его уже отправил (не во время набора текста).
+      var answerNoteHtml = '';
+      if (answeredCurrentRound && session && p.answers && typeof session.currentIndex === 'number') {
+        var currentAnswerText = p.answers[session.currentIndex];
+        answerNoteHtml = '<div class="muted" style="font-size:13px; margin:2px 0 0 32px;">Ответ: «' +
+          escapeHtml(currentAnswerText || '(пусто)') + '»</div>';
+      }
       row.innerHTML =
-        '<div><span class="rank-badge">' + (i + 1) + '</span> <strong>' + escapeHtml(p.name || 'Без имени') + '</strong></div>' +
-        '<div class="row" style="flex:0 0 auto; gap:6px;">' + pointsHtml + statusHtml + '</div>';
+        '<div>' +
+          '<div><span class="rank-badge">' + (i + 1) + '</span> <strong>' + escapeHtml(p.name || 'Без имени') + '</strong></div>' +
+          answerNoteHtml +
+        '</div>' +
+        '<div class="row" style="flex:0 0 auto; gap:6px; align-items:center;">' + pointsHtml + warnHtml + statusHtml + '</div>';
       list.appendChild(row);
     });
 

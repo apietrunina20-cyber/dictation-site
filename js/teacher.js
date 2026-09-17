@@ -14,7 +14,7 @@
   var db = firebase.firestore();
 
   var currentUser = null;
-  var textsCache = []; // [{id, title, level, sentences, ...}]
+  var textsCache = []; // [{id, title, level, pairs, ...}]
   var activeSessionCode = null;
   var unsubSession = null;
   var unsubParticipants = null;
@@ -62,7 +62,7 @@
     auth.signOut();
   });
 
-  /* ---------------- Библиотека текстов ---------------- */
+  /* ---------------- Библиотека слов ---------------- */
 
   $('add-text-btn').addEventListener('click', function () {
     $('add-text-form').style.display = 'block';
@@ -76,15 +76,15 @@
     var title = $('new-title').value.trim();
     var level = $('new-level').value;
     var text = $('new-text').value.trim();
-    if (!title || !text) { alert('Заполните название и текст диктанта.'); return; }
-    var sentences = Dictation.splitIntoSentences(text);
-    if (!sentences.length) { alert('Не удалось разбить текст на предложения.'); return; }
+    if (!title || !text) { alert('Заполните название и список слов.'); return; }
+    var pairs = Dictation.parseWordPairs(text);
+    if (!pairs.length) { alert('Не удалось разобрать список слов. Проверьте формат (см. подсказку под полем).'); return; }
 
     $('save-text-btn').disabled = true;
     db.collection('texts').add({
       title: title,
       level: level,
-      sentences: sentences,
+      pairs: pairs,
       ownerUid: currentUser.uid,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(function () {
@@ -126,23 +126,19 @@
         '<div>' +
           '<strong>' + escapeHtml(t.title) + '</strong> ' +
           '<span class="tag">' + escapeHtml(t.level || '') + '</span> ' +
-          '<span class="muted">· ' + t.sentences.length + ' предл.</span>' +
+          '<span class="muted">· ' + (t.pairs ? t.pairs.length : 0) + ' слов</span>' +
         '</div>' +
         '<div class="row" style="flex:0 0 auto; gap:8px;">' +
-          '<button class="btn secondary" data-act="listen" style="padding:8px 12px;">🔊</button>' +
           '<button class="btn" data-act="session" style="padding:8px 12px;">Провести</button>' +
           '<button class="btn danger" data-act="delete" style="padding:8px 12px;">✕</button>' +
         '</div>';
-      row.querySelector('[data-act="listen"]').addEventListener('click', function () {
-        Dictation.speak(t.sentences[0], { rate: 0.9 });
-      });
       row.querySelector('[data-act="session"]').addEventListener('click', function () {
         $('session-text-select').value = t.id;
         createSession(t);
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       });
       row.querySelector('[data-act="delete"]').addEventListener('click', function () {
-        if (confirm('Удалить текст «' + t.title + '» из библиотеки?')) {
+        if (confirm('Удалить список «' + t.title + '» из библиотеки?')) {
           db.collection('texts').doc(t.id).delete();
         }
       });
@@ -156,17 +152,17 @@
     textsCache.forEach(function (t) {
       var opt = document.createElement('option');
       opt.value = t.id;
-      opt.textContent = t.title + ' (' + t.level + ', ' + t.sentences.length + ' предл.)';
+      opt.textContent = t.title + ' (' + t.level + ', ' + (t.pairs ? t.pairs.length : 0) + ' слов)';
       sel.appendChild(opt);
     });
   }
 
-  /* ---------------- Сессия диктанта ---------------- */
+  /* ---------------- Сессия игры ---------------- */
 
   $('create-session-btn').addEventListener('click', function () {
     var id = $('session-text-select').value;
     var t = textsCache.filter(function (x) { return x.id === id; })[0];
-    if (!t) { alert('Сначала добавьте текст в библиотеку.'); return; }
+    if (!t) { alert('Сначала добавьте список слов в библиотеку.'); return; }
     createSession(t);
   });
 
@@ -184,10 +180,9 @@
         ownerUid: currentUser.uid,
         textId: text.id,
         title: text.title,
-        sentences: text.sentences,
+        pairs: text.pairs,
         status: 'waiting',
         currentIndex: -1,
-        repeatNonce: 0,
         roundStartedAt: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(function () {
@@ -229,7 +224,7 @@
     var tag = $('session-status-tag');
     tag.className = 'tag status-' + (session.status === 'reveal' ? 'playing' : session.status);
     tag.textContent = session.status === 'waiting' ? 'Ожидание'
-      : session.status === 'playing' ? 'Идёт диктант'
+      : session.status === 'playing' ? 'Идёт игра'
       : session.status === 'reveal' ? 'Результаты раунда'
       : 'Завершено';
 
@@ -240,13 +235,14 @@
     $('finish-session-btn').style.display = (session.status === 'playing' || session.status === 'reveal') ? 'block' : 'none';
 
     var idx = session.currentIndex;
-    var total = session.sentences.length;
+    var total = session.pairs.length;
     if (session.status === 'playing') {
-      $('sentence-progress').textContent = 'Предложение ' + (idx + 1) + ' из ' + total;
-      $('current-sentence-text').textContent = session.sentences[idx] || '';
+      var pair = session.pairs[idx] || {};
+      $('sentence-progress').textContent = 'Слово ' + (idx + 1) + ' из ' + total;
+      $('current-sentence-text').textContent = (pair.ru || '') + '  →  ' + (pair.en || '');
     } else if (session.status === 'reveal') {
-      $('reveal-progress').textContent = 'Результаты предложения ' + (idx + 1) + ' из ' + total;
-      $('next-sentence-btn').textContent = (idx >= total - 1) ? '🏁 Это последнее — завершить диктант' : '➡ Следующее предложение';
+      $('reveal-progress').textContent = 'Результаты слова ' + (idx + 1) + ' из ' + total;
+      $('next-sentence-btn').textContent = (idx >= total - 1) ? '🏁 Это последнее — завершить игру' : '➡ Следующее слово';
     }
     lastRenderedStatus = session.status;
     window._activeSession = session;
@@ -280,13 +276,8 @@
     db.collection('sessions').doc(activeSessionCode).update({
       status: 'playing',
       currentIndex: 0,
-      repeatNonce: 0,
       roundStartedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-  });
-
-  $('repeat-sentence-btn').addEventListener('click', function () {
-    db.collection('sessions').doc(activeSessionCode).update({ repeatNonce: firebase.firestore.FieldValue.increment(1) });
   });
 
   $('reveal-round-btn').addEventListener('click', function () {
@@ -297,21 +288,20 @@
     var session = window._activeSession;
     if (!session) return;
     var idx = session.currentIndex;
-    var total = session.sentences.length;
+    var total = session.pairs.length;
     if (idx >= total - 1) {
       db.collection('sessions').doc(activeSessionCode).update({ status: 'finished' });
     } else {
       db.collection('sessions').doc(activeSessionCode).update({
         currentIndex: idx + 1,
         status: 'playing',
-        repeatNonce: 0,
         roundStartedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
   });
 
   $('finish-session-btn').addEventListener('click', function () {
-    if (confirm('Завершить диктант для всех учеников сейчас?')) {
+    if (confirm('Завершить игру для всех учеников сейчас?')) {
       db.collection('sessions').doc(activeSessionCode).update({ status: 'finished' });
     }
   });
@@ -345,14 +335,14 @@
       var row = document.createElement('div');
       row.className = 'list-item';
       var statusHtml;
-      if (p.score !== undefined && p.score !== null) {
-        statusHtml = '<span class="tag status-finished">' + p.score + '%</span>';
+      if (p.percent !== undefined && p.percent !== null) {
+        statusHtml = '<span class="tag status-finished">' + p.correctCount + '/' + p.totalWords + '</span>';
       } else if (session && (session.status === 'playing' || session.status === 'reveal') && typeof p.lastAnsweredIndex === 'number' && p.lastAnsweredIndex >= session.currentIndex) {
         statusHtml = '<span class="tag status-playing">ответил(а) ✓</span>';
       } else if (session && session.status === 'playing') {
-        statusHtml = '<span class="tag">печатает…</span>';
+        statusHtml = '<span class="tag">думает…</span>';
       } else {
-        statusHtml = '<span class="tag">на диктанте</span>';
+        statusHtml = '<span class="tag">в игре</span>';
       }
       var pointsHtml = '<span class="tag">' + (p.totalPoints || 0) + ' очк.</span>';
       row.innerHTML =

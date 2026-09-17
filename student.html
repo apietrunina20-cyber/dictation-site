@@ -18,10 +18,10 @@
   </div>
 
   <div id="view-join" class="card narrow" style="display:none;">
-    <h1>Присоединиться к диктанту</h1>
+    <h1>Присоединиться к игре</h1>
     <div id="join-error" class="error-banner" style="display:none;"></div>
     <div class="field">
-      <label>Код диктанта</label>
+      <label>Код игры</label>
       <input type="text" id="join-code" maxlength="6" style="text-transform:uppercase; letter-spacing:0.15em; font-weight:700; font-size:20px; text-align:center;">
     </div>
     <div class="field">
@@ -34,50 +34,34 @@
   <div id="view-waiting" class="card narrow center" style="display:none;">
     <h1 id="waiting-title"></h1>
     <div class="spinner"></div>
-    <p class="muted">Учитель скоро начнёт диктант. Не закрывай страницу.</p>
+    <p class="muted">Учитель скоро начнёт игру. Не закрывай страницу.</p>
   </div>
 
-  <div id="view-dictation" class="card" style="display:none;">
-    <div class="row" style="align-items:center;">
-      <h2 id="dictation-title" style="margin:0;"></h2>
-      <button class="btn secondary" id="settings-toggle" style="flex:0 0 auto; padding:8px 12px;">⚙</button>
-    </div>
-
-    <div id="settings-panel" style="display:none; background:var(--surface-muted); border-radius:12px; padding:14px; margin-top:12px;">
-      <div class="field" style="margin-bottom:10px;">
-        <label>Голос</label>
-        <select id="voice-select"></select>
-      </div>
-      <div class="field" style="margin-bottom:0;">
-        <label>Скорость: <span id="rate-value">0.9</span></label>
-        <input type="range" id="rate-range" min="0.5" max="1.2" step="0.1" value="0.9">
-      </div>
-    </div>
-
-    <div class="sentence-progress" id="sentence-progress" style="margin-top:16px;"></div>
-    <div class="speaker-icon" id="speaker-icon">🔊</div>
-    <div class="row center" style="justify-content:center; margin-bottom:16px;">
-      <button class="btn secondary" id="replay-btn" style="flex:0 0 auto;">🔁 Повторить</button>
-    </div>
+  <div id="view-dictation" class="card center" style="display:none;">
+    <div class="sentence-progress" id="sentence-progress"></div>
 
     <div id="answer-panel">
-      <textarea id="current-answer" class="answer-area" style="min-height:120px;" placeholder="Печатай то, что услышал(а)…"></textarea>
+      <p class="muted" style="margin-bottom:2px;">Переведи на английский:</p>
+      <div class="prompt-word" id="prompt-word"></div>
+      <input type="text" id="current-answer" class="answer-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Напиши перевод…">
       <button class="btn success block" id="submit-answer-btn" style="margin-top:12px;">Ответить ✓</button>
     </div>
-    <div id="waiting-panel" class="center" style="display:none; padding:20px 0;">
+    <div id="waiting-panel" style="display:none; padding:20px 0;">
       <div class="spinner"></div>
       <p class="muted">Ответ отправлен ✓ Ждём остальных…</p>
     </div>
   </div>
 
   <div id="view-round-result" class="card center" style="display:none;">
-    <h1>Раунд <span id="round-result-num"></span></h1>
+    <h1>Слово <span id="round-result-num"></span></h1>
+    <div class="result-icon" id="round-result-icon"></div>
     <div class="score-badge" id="round-points-badge"></div>
     <p class="muted" id="round-points-note"></p>
-    <div class="diff-sentence" id="round-result-diff" style="text-align:left; margin:16px 0;"></div>
+    <p style="font-size:18px; font-weight:700;" id="round-correct-answer"></p>
+    <button class="btn secondary" id="round-listen-btn" style="margin:6px auto 0;">🔊 Прослушать</button>
     <div class="divider"></div>
     <p class="muted" id="round-rank-note"></p>
-    <p class="muted">Учитель скоро продолжит диктант…</p>
+    <p class="muted">Учитель скоро продолжит игру…</p>
     <div class="spinner"></div>
   </div>
 

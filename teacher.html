@@ -103,6 +103,7 @@
           <span id="session-link" style="flex:1;"></span>
           <button class="btn secondary" id="copy-link-btn" style="padding:8px 14px;">Скопировать</button>
         </div>
+        <button class="btn secondary block" id="open-screen-btn" type="button" style="margin-top:8px;">🖥 Открыть экран для класса (для проектора)</button>
 
         <div class="divider"></div>
 
@@ -113,23 +114,31 @@
 
         <div id="controls-playing" style="display:none;">
           <div class="sentence-progress" id="sentence-progress"></div>
+          <div class="answered-big" id="answered-count" style="font-size:15px; margin-top:0;"></div>
           <div class="card" style="background:var(--surface-muted); box-shadow:none; padding:16px;">
             <p class="muted" style="margin:0 0 4px;">Текущее предложение (видно только вам):</p>
             <p style="font-size:17px; font-weight:600; margin:0;" id="current-sentence-text"></p>
           </div>
           <div class="row" style="margin-top:14px;">
             <button class="btn secondary" id="repeat-sentence-btn">🔁 Повторить</button>
-            <button class="btn" id="next-sentence-btn">➡ Следующее предложение</button>
+            <button class="btn" id="reveal-round-btn">📊 Показать результаты раунда</button>
           </div>
-          <button class="btn danger block" id="finish-session-btn" style="margin-top:10px;">🏁 Завершить диктант</button>
+        </div>
+
+        <div id="controls-reveal" style="display:none;">
+          <div class="sentence-progress" id="reveal-progress"></div>
+          <p class="muted center">Рейтинг показан на общем экране (если он открыт на проекторе). Ниже — тот же рейтинг у вас.</p>
+          <button class="btn block" id="next-sentence-btn">➡ Следующее предложение</button>
         </div>
 
         <div id="controls-finished" style="display:none;">
-          <p class="muted">Диктант завершён. Ниже — результаты учеников по мере проверки на их стороне.</p>
+          <p class="muted">Диктант завершён. Ниже — итоговый рейтинг и результаты учеников.</p>
         </div>
 
+        <button class="btn danger block" id="finish-session-btn" style="margin-top:10px; display:none;">🏁 Завершить диктант сейчас</button>
+
         <div class="divider"></div>
-        <h3>Ученики</h3>
+        <h3>Ученики / рейтинг</h3>
         <div id="participants-list"></div>
         <div id="participants-empty" class="empty-state" style="display:none; padding:16px;">Пока никто не подключился.</div>
 
@@ -149,4 +158,3 @@
 <script src="js/teacher.js"></script>
 </body>
 </html>
-

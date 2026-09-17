@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кабинет учителя — Диктанты</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><span class="dot">●</span> Диктанты — кабинет учителя</div>
+    <div id="user-badge" class="muted" style="color:#fff; display:none;">
+      <span id="user-email"></span> · <a href="#" id="logout-link" style="color:#fff; text-decoration: underline;">выйти</a>
+    </div>
+  </div>
+
+  <div id="view-setup" class="card" style="display:none;">
+    <h1>Нужна небольшая настройка</h1>
+    <div class="setup-banner">
+      Конфигурация Firebase ещё не заполнена в файле <code>js/firebase-config.js</code>.
+      Откройте файл <strong>ИНСТРУКЦИЯ.txt</strong> из архива и выполните шаги 1–3 —
+      это займёт около 10 минут и делается один раз.
+    </div>
+  </div>
+
+  <div id="view-login" class="card narrow" style="display:none;">
+    <h1>Вход</h1>
+    <p class="muted">Войдите под своим аккаунтом (см. шаг 3 в ИНСТРУКЦИЯ.txt — там сказано, как создать логин и пароль в Firebase).</p>
+    <div id="login-error" class="error-banner" style="display:none;"></div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" id="login-password" autocomplete="current-password">
+    </div>
+    <button class="btn block" id="login-btn">Войти</button>
+  </div>
+
+  <div id="view-app" style="display:none; width:100%; max-width:880px;">
+
+    <div class="card">
+      <div class="row" style="align-items:center;">
+        <div>
+          <h2 style="margin-bottom:2px;">Библиотека диктантов</h2>
+          <p class="muted" style="margin:0;">Видна только вам. Ученики получают лишь текст конкретного диктанта по ссылке.</p>
+        </div>
+        <div style="flex:0 0 auto;">
+          <button class="btn" id="add-text-btn">+ Добавить текст</button>
+        </div>
+      </div>
+
+      <div id="add-text-form" style="display:none; margin-top:20px;">
+        <div class="divider"></div>
+        <div class="row">
+          <div class="field">
+            <label>Название</label>
+            <input type="text" id="new-title" placeholder="Например: Present Simple — про распорядок дня">
+          </div>
+          <div class="field" style="max-width:200px;">
+            <label>Уровень</label>
+            <select id="new-level">
+              <option>A1</option><option>A2</option><option selected>B1</option>
+              <option>B2</option><option>C1</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Текст диктанта</label>
+          <textarea id="new-text" rows="6" placeholder="Вставьте текст на английском. Он будет автоматически разбит на предложения."></textarea>
+        </div>
+        <div class="row">
+          <button class="btn secondary" id="cancel-text-btn">Отмена</button>
+          <button class="btn success" id="save-text-btn">Сохранить в библиотеку</button>
+        </div>
+      </div>
+
+      <div id="texts-list" style="margin-top:18px;"></div>
+      <div id="texts-empty" class="empty-state" style="display:none;">Пока нет ни одного текста. Добавьте первый диктант.</div>
+    </div>
+
+    <div class="card" id="session-card" style="display:none;">
+      <div id="session-none">
+        <h2>Провести диктант</h2>
+        <p class="muted">Выберите текст из библиотеки и создайте сессию — ученики подключатся по ссылке.</p>
+        <div class="field">
+          <label>Текст диктанта</label>
+          <select id="session-text-select"></select>
+        </div>
+        <button class="btn block" id="create-session-btn">Создать сессию</button>
+      </div>
+
+      <div id="session-active" style="display:none;">
+        <div class="row" style="align-items:center; margin-bottom:6px;">
+          <h2 style="margin:0;" id="session-title"></h2>
+          <span class="tag" id="session-status-tag"></span>
+        </div>
+
+        <div class="code-display" id="session-code"></div>
+        <div class="link-box">
+          <span id="session-link" style="flex:1;"></span>
+          <button class="btn secondary" id="copy-link-btn" style="padding:8px 14px;">Скопировать</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div id="controls-waiting">
+          <p class="muted">Отправьте ссылку ученикам. Как только они подключатся, вы увидите их ниже. Начните диктант, когда все будут готовы.</p>
+          <button class="btn success block" id="start-session-btn">▶ Начать диктант</button>
+        </div>
+
+        <div id="controls-playing" style="display:none;">
+          <div class="sentence-progress" id="sentence-progress"></div>
+          <div class="card" style="background:var(--surface-muted); box-shadow:none; padding:16px;">
+            <p class="muted" style="margin:0 0 4px;">Текущее предложение (видно только вам):</p>
+            <p style="font-size:17px; font-weight:600; margin:0;" id="current-sentence-text"></p>
+          </div>
+          <div class="row" style="margin-top:14px;">
+            <button class="btn secondary" id="repeat-sentence-btn">🔁 Повторить</button>
+            <button class="btn" id="next-sentence-btn">➡ Следующее предложение</button>
+          </div>
+          <button class="btn danger block" id="finish-session-btn" style="margin-top:10px;">🏁 Завершить диктант</button>
+        </div>
+
+        <div id="controls-finished" style="display:none;">
+          <p class="muted">Диктант завершён. Ниже — результаты учеников по мере проверки на их стороне.</p>
+        </div>
+
+        <div class="divider"></div>
+        <h3>Ученики</h3>
+        <div id="participants-list"></div>
+        <div id="participants-empty" class="empty-state" style="display:none; padding:16px;">Пока никто не подключился.</div>
+
+        <button class="btn secondary block" id="new-session-btn" style="margin-top:16px;">Новая сессия / другой текст</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">Диктанты · страница только для учителя</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/teacher.js"></script>
+</body>
+</html>
+

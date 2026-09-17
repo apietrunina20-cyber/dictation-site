@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Диктант</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><span class="dot">●</span> Диктант</div>
+  </div>
+
+  <div id="view-setup" class="card" style="display:none;">
+    <h1>Сайт ещё не настроен</h1>
+    <p>Попросите вашего учителя завершить настройку сайта.</p>
+  </div>
+
+  <div id="view-join" class="card narrow" style="display:none;">
+    <h1>Присоединиться к диктанту</h1>
+    <div id="join-error" class="error-banner" style="display:none;"></div>
+    <div class="field">
+      <label>Код диктанта</label>
+      <input type="text" id="join-code" maxlength="6" style="text-transform:uppercase; letter-spacing:0.15em; font-weight:700; font-size:20px; text-align:center;">
+    </div>
+    <div class="field">
+      <label>Твоё имя</label>
+      <input type="text" id="join-name" placeholder="Имя и фамилия">
+    </div>
+    <button class="btn block" id="join-btn">Начать</button>
+  </div>
+
+  <div id="view-waiting" class="card narrow center" style="display:none;">
+    <h1 id="waiting-title"></h1>
+    <div class="spinner"></div>
+    <p class="muted">Учитель скоро начнёт диктант. Не закрывай страницу.</p>
+  </div>
+
+  <div id="view-dictation" class="card" style="display:none;">
+    <div class="row" style="align-items:center;">
+      <h2 id="dictation-title" style="margin:0;"></h2>
+      <button class="btn secondary" id="settings-toggle" style="flex:0 0 auto; padding:8px 12px;">⚙</button>
+    </div>
+
+    <div id="settings-panel" style="display:none; background:var(--surface-muted); border-radius:12px; padding:14px; margin-top:12px;">
+      <div class="field" style="margin-bottom:10px;">
+        <label>Голос</label>
+        <select id="voice-select"></select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Скорость: <span id="rate-value">0.9</span></label>
+        <input type="range" id="rate-range" min="0.5" max="1.2" step="0.1" value="0.9">
+      </div>
+    </div>
+
+    <div class="sentence-progress" id="sentence-progress" style="margin-top:16px;"></div>
+    <div class="speaker-icon" id="speaker-icon">🔊</div>
+    <div class="row center" style="justify-content:center; margin-bottom:16px;">
+      <button class="btn secondary" id="replay-btn" style="flex:0 0 auto;">🔁 Повторить</button>
+    </div>
+
+    <div id="completed-lines" class="muted" style="white-space:pre-wrap; margin-bottom:8px; line-height:1.7;"></div>
+    <textarea id="current-answer" class="answer-area" style="min-height:70px;" placeholder="Печатай то, что услышал(а)…"></textarea>
+  </div>
+
+  <div id="view-results" class="card" style="display:none;">
+    <h1>Результат</h1>
+    <div class="score-badge" id="score-badge"></div>
+    <p class="muted center" id="score-summary"></p>
+    <div class="divider"></div>
+    <div id="results-list"></div>
+  </div>
+
+  <div class="footer-note" id="footer-code"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/student.js"></script>
+</body>
+</html>
+

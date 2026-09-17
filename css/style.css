@@ -162,6 +162,7 @@ label { font-size: 13px; font-weight: 700; color: var(--text-muted); display: bl
 .tag.status-waiting { background: var(--warning-bg); color: #92400e; }
 .tag.status-playing { background: var(--success-bg); color: #166534; }
 .tag.status-finished { background: #e0e7ff; color: #3730a3; }
+.tag.status-warning { background: var(--warning-bg); color: #92400e; font-weight: 800; }
 
 .list-item {
   display: flex;

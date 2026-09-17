@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Экран для класса — Диктанты</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><span class="dot">●</span> Диктанты — экран для класса</div>
+  </div>
+
+  <div id="view-setup" class="card" style="display:none;">
+    <h1>Сайт ещё не настроен</h1>
+    <p>Попросите учителя завершить настройку сайта.</p>
+  </div>
+
+  <div id="view-nocode" class="card narrow center" style="display:none;">
+    <h1>Нет кода диктанта</h1>
+    <p class="muted">Откройте эту страницу по кнопке «Открыть экран для класса» в кабинете учителя.</p>
+  </div>
+
+  <div id="view-lobby" class="card center" style="display:none;">
+    <p class="muted" id="lobby-title" style="font-size:18px; margin-bottom:6px;"></p>
+    <div class="code-display" id="lobby-code" style="font-size:64px;"></div>
+    <p class="muted">Присоединяйтесь на своём устройстве и вводите этот код</p>
+    <div class="divider"></div>
+    <h3>Участники (<span id="lobby-count">0</span>)</h3>
+    <div id="lobby-participants" class="chips"></div>
+  </div>
+
+  <div id="view-round" class="card center" style="display:none;">
+    <div class="sentence-progress" id="round-progress" style="font-size:20px;"></div>
+    <div class="soundwave" id="soundwave"><span></span><span></span><span></span><span></span><span></span></div>
+    <p class="muted" style="font-size:18px;">Слушайте внимательно и печатайте на своём устройстве</p>
+    <div class="answered-big" id="round-answered"></div>
+  </div>
+
+  <div id="view-round-reveal" class="card center" style="display:none;">
+    <div class="sentence-progress" id="reveal-progress-screen" style="font-size:18px;"></div>
+    <p class="muted" style="font-size:15px; margin-bottom:4px;">Правильный вариант:</p>
+    <div class="diff-sentence" id="reveal-sentence-text" style="text-align:center; font-size:19px; font-weight:600;"></div>
+    <div class="divider"></div>
+    <h3>Рейтинг</h3>
+    <div id="reveal-leaderboard"></div>
+  </div>
+
+  <div id="view-final" class="card center" style="display:none;">
+    <h1>🏆 Итоги диктанта</h1>
+    <div id="final-podium" class="podium"></div>
+    <div class="divider"></div>
+    <div id="final-leaderboard"></div>
+  </div>
+
+  <div class="footer-note">Диктанты · общий экран</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/screen.js"></script>
+</body>
+</html>

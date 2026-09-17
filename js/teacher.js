@@ -188,6 +188,7 @@
         status: 'waiting',
         currentIndex: -1,
         repeatNonce: 0,
+        roundStartedAt: null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       }).then(function () {
         openSession(code);
@@ -226,26 +227,39 @@
     $('session-link').textContent = studentUrl;
 
     var tag = $('session-status-tag');
-    tag.className = 'tag status-' + session.status;
-    tag.textContent = session.status === 'waiting' ? 'Ожидание' : session.status === 'playing' ? 'Идёт диктант' : 'Завершено';
+    tag.className = 'tag status-' + (session.status === 'reveal' ? 'playing' : session.status);
+    tag.textContent = session.status === 'waiting' ? 'Ожидание'
+      : session.status === 'playing' ? 'Идёт диктант'
+      : session.status === 'reveal' ? 'Результаты раунда'
+      : 'Завершено';
 
     $('controls-waiting').style.display = session.status === 'waiting' ? 'block' : 'none';
     $('controls-playing').style.display = session.status === 'playing' ? 'block' : 'none';
+    $('controls-reveal').style.display = session.status === 'reveal' ? 'block' : 'none';
     $('controls-finished').style.display = session.status === 'finished' ? 'block' : 'none';
+    $('finish-session-btn').style.display = (session.status === 'playing' || session.status === 'reveal') ? 'block' : 'none';
 
+    var idx = session.currentIndex;
+    var total = session.sentences.length;
     if (session.status === 'playing') {
-      var idx = session.currentIndex;
-      var total = session.sentences.length;
       $('sentence-progress').textContent = 'Предложение ' + (idx + 1) + ' из ' + total;
       $('current-sentence-text').textContent = session.sentences[idx] || '';
+    } else if (session.status === 'reveal') {
+      $('reveal-progress').textContent = 'Результаты предложения ' + (idx + 1) + ' из ' + total;
       $('next-sentence-btn').textContent = (idx >= total - 1) ? '🏁 Это последнее — завершить диктант' : '➡ Следующее предложение';
     }
     lastRenderedStatus = session.status;
     window._activeSession = session;
+    renderParticipants();
   }
 
   function studentLinkFor(code) {
     var path = window.location.href.replace(/teacher\.html.*$/, 'student.html');
+    return path + '?code=' + code;
+  }
+
+  function screenLinkFor(code) {
+    var path = window.location.href.replace(/teacher\.html.*$/, 'screen.html');
     return path + '?code=' + code;
   }
 
@@ -257,12 +271,26 @@
     });
   });
 
+  $('open-screen-btn').addEventListener('click', function () {
+    if (!activeSessionCode) return;
+    window.open(screenLinkFor(activeSessionCode), '_blank');
+  });
+
   $('start-session-btn').addEventListener('click', function () {
-    db.collection('sessions').doc(activeSessionCode).update({ status: 'playing', currentIndex: 0, repeatNonce: 0 });
+    db.collection('sessions').doc(activeSessionCode).update({
+      status: 'playing',
+      currentIndex: 0,
+      repeatNonce: 0,
+      roundStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
   });
 
   $('repeat-sentence-btn').addEventListener('click', function () {
     db.collection('sessions').doc(activeSessionCode).update({ repeatNonce: firebase.firestore.FieldValue.increment(1) });
+  });
+
+  $('reveal-round-btn').addEventListener('click', function () {
+    db.collection('sessions').doc(activeSessionCode).update({ status: 'reveal' });
   });
 
   $('next-sentence-btn').addEventListener('click', function () {
@@ -273,7 +301,12 @@
     if (idx >= total - 1) {
       db.collection('sessions').doc(activeSessionCode).update({ status: 'finished' });
     } else {
-      db.collection('sessions').doc(activeSessionCode).update({ currentIndex: idx + 1, repeatNonce: 0 });
+      db.collection('sessions').doc(activeSessionCode).update({
+        currentIndex: idx + 1,
+        status: 'playing',
+        repeatNonce: 0,
+        roundStartedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
     }
   });
 
@@ -292,32 +325,51 @@
   });
 
   function renderParticipants() {
+    var session = window._activeSession;
     var ids = Object.keys(participantsCache);
     var list = $('participants-list');
     if (!ids.length) {
       $('participants-empty').style.display = 'block';
       list.innerHTML = '';
+      if ($('answered-count')) $('answered-count').textContent = '';
       return;
     }
     $('participants-empty').style.display = 'none';
     list.innerHTML = '';
     ids.sort(function (a, b) {
+      var ta = participantsCache[a].totalPoints || 0, tb = participantsCache[b].totalPoints || 0;
+      if (tb !== ta) return tb - ta;
       return (participantsCache[a].name || '').localeCompare(participantsCache[b].name || '');
-    }).forEach(function (id) {
+    }).forEach(function (id, i) {
       var p = participantsCache[id];
       var row = document.createElement('div');
       row.className = 'list-item';
       var statusHtml;
       if (p.score !== undefined && p.score !== null) {
         statusHtml = '<span class="tag status-finished">' + p.score + '%</span>';
-      } else if (p.finishedAt) {
-        statusHtml = '<span class="tag">проверяется…</span>';
+      } else if (session && (session.status === 'playing' || session.status === 'reveal') && typeof p.lastAnsweredIndex === 'number' && p.lastAnsweredIndex >= session.currentIndex) {
+        statusHtml = '<span class="tag status-playing">ответил(а) ✓</span>';
+      } else if (session && session.status === 'playing') {
+        statusHtml = '<span class="tag">печатает…</span>';
       } else {
         statusHtml = '<span class="tag">на диктанте</span>';
       }
-      row.innerHTML = '<div><strong>' + escapeHtml(p.name || 'Без имени') + '</strong></div>' + statusHtml;
+      var pointsHtml = '<span class="tag">' + (p.totalPoints || 0) + ' очк.</span>';
+      row.innerHTML =
+        '<div><span class="rank-badge">' + (i + 1) + '</span> <strong>' + escapeHtml(p.name || 'Без имени') + '</strong></div>' +
+        '<div class="row" style="flex:0 0 auto; gap:6px;">' + pointsHtml + statusHtml + '</div>';
       list.appendChild(row);
     });
+
+    if (session && (session.status === 'playing' || session.status === 'reveal') && $('answered-count')) {
+      var answered = ids.filter(function (id) {
+        var p = participantsCache[id];
+        return typeof p.lastAnsweredIndex === 'number' && p.lastAnsweredIndex >= session.currentIndex;
+      }).length;
+      $('answered-count').textContent = 'Ответили: ' + answered + ' из ' + ids.length;
+    } else if ($('answered-count')) {
+      $('answered-count').textContent = '';
+    }
   }
 
   function escapeHtml(s) {
@@ -326,4 +378,3 @@
     });
   }
 })();
-

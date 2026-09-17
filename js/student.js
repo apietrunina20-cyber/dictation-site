@@ -16,15 +16,14 @@
   var session = null;
   var answers = [];
   var roundPointsArr = [];
+  var correctFlags = [];
   var participantTotalPoints = 0;
+  var participantCorrectCount = 0;
   var lastRoundResult = null;
   var roundStartMs = Date.now();
   var lastHandledIndex = -1;
-  var lastHandledNonce = null;
   var submittedThisRound = false;
   var finishedHandled = false;
-  var rate = parseFloat(localStorage.getItem('dictation_rate') || '0.9');
-  var chosenVoiceURI = localStorage.getItem('dictation_voice') || '';
 
   showView('view-join');
 
@@ -46,12 +45,12 @@
     $('join-btn').disabled = true;
     db.collection('sessions').doc(code).get().then(function (doc) {
       if (!doc.exists) {
-        showJoinError('Диктант с таким кодом не найден. Проверь код у учителя.');
+        showJoinError('Игра с таким кодом не найдена. Проверь код у учителя.');
         $('join-btn').disabled = false;
         return;
       }
       sessionCode = code;
-      $('footer-code').textContent = 'Код диктанта: ' + code;
+      $('footer-code').textContent = 'Код игры: ' + code;
       participantId = Dictation.getParticipantId(code);
       var pRef = db.collection('sessions').doc(code).collection('participants').doc(participantId);
       pRef.get().then(function (pDoc) {
@@ -66,10 +65,11 @@
             var d = pDoc.data();
             participantTotalPoints = d.totalPoints || 0;
             roundPointsArr = d.roundPoints || [];
+            correctFlags = d.correctFlags || [];
             answers = d.answers || [];
           }
-          if (pDoc.exists && pDoc.data().score !== undefined && pDoc.data().score !== null) {
-            // Уже проходил(а) этот диктант — сразу показываем результат.
+          if (pDoc.exists && pDoc.data().percent !== undefined && pDoc.data().percent !== null) {
+            // Уже проходил(а) эту игру — сразу показываем результат.
             db.collection('sessions').doc(code).get().then(function (sDoc) {
               showStoredResult(sDoc.data(), pDoc.data());
             });
@@ -103,27 +103,22 @@
       $('waiting-title').textContent = session.title;
     } else if (session.status === 'playing') {
       var idx = session.currentIndex;
-      var total = session.sentences.length;
+      var total = session.pairs.length;
 
       if (idx !== lastHandledIndex) {
         lastHandledIndex = idx;
-        lastHandledNonce = session.repeatNonce;
         submittedThisRound = false;
         roundStartMs = (session.roundStartedAt && session.roundStartedAt.toMillis) ? session.roundStartedAt.toMillis() : Date.now();
 
         showView('view-dictation');
-        $('dictation-title').textContent = session.title;
-        $('sentence-progress').textContent = 'Предложение ' + (idx + 1) + ' из ' + total;
+        $('sentence-progress').textContent = 'Слово ' + (idx + 1) + ' из ' + total;
+        $('prompt-word').textContent = (session.pairs[idx] || {}).ru || '';
         $('answer-panel').style.display = 'block';
         $('waiting-panel').style.display = 'none';
         $('current-answer').value = '';
         $('current-answer').disabled = false;
         $('submit-answer-btn').disabled = false;
         $('current-answer').focus();
-        speakCurrent();
-      } else if (session.repeatNonce !== lastHandledNonce) {
-        lastHandledNonce = session.repeatNonce;
-        if (!submittedThisRound) speakCurrent();
       }
     } else if (session.status === 'reveal') {
       if (!submittedThisRound) submitCurrentAnswer();
@@ -146,10 +141,12 @@
     var text = $('current-answer') ? $('current-answer').value : '';
     answers[idx] = text;
     var elapsed = Date.now() - roundStartMs;
-    var result = Dictation.scoreRound(session.sentences[idx], text, elapsed);
+    var result = Dictation.scoreWordRound(session.pairs[idx].en, text, elapsed);
     lastRoundResult = result;
     roundPointsArr[idx] = result.points;
+    correctFlags[idx] = result.correct;
     participantTotalPoints += result.points;
+    if (result.correct) participantCorrectCount++;
 
     $('current-answer').disabled = true;
     $('submit-answer-btn').disabled = true;
@@ -159,6 +156,7 @@
     db.collection('sessions').doc(sessionCode).collection('participants').doc(participantId).set({
       answers: answers,
       roundPoints: roundPointsArr,
+      correctFlags: correctFlags,
       totalPoints: participantTotalPoints,
       lastAnsweredIndex: idx,
       lastAnsweredAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -166,79 +164,39 @@
   }
 
   $('submit-answer-btn').addEventListener('click', function () { submitCurrentAnswer(); });
+  $('current-answer').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); submitCurrentAnswer(); }
+  });
 
   function showStoredResult(sessionData, participantData) {
-    var answersStored = participantData.answers || [];
     participantTotalPoints = participantData.totalPoints || 0;
-    var score = Dictation.scoreDictation(sessionData.sentences, answersStored);
-    renderResults(sessionData.sentences, score);
+    var flags = participantData.correctFlags || [];
+    var correctCount = flags.filter(Boolean).length;
+    renderResults(sessionData.pairs, participantData.answers || [], flags, correctCount);
   }
-
-  function speakCurrent() {
-    if (!session) return;
-    var text = session.sentences[lastHandledIndex];
-    $('speaker-icon').style.opacity = '1';
-    Dictation.speak(text, {
-      rate: rate,
-      voiceURI: chosenVoiceURI || undefined,
-      onend: function () { $('speaker-icon').style.opacity = '0.4'; }
-    });
-  }
-
-  $('replay-btn').addEventListener('click', function () { speakCurrent(); });
-
-  /* ---------- Настройки голоса ---------- */
-
-  $('settings-toggle').addEventListener('click', function () {
-    var panel = $('settings-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  });
-
-  function populateVoices() {
-    var voices = Dictation.getEnglishVoices();
-    var sel = $('voice-select');
-    sel.innerHTML = '';
-    voices.forEach(function (v) {
-      var opt = document.createElement('option');
-      opt.value = v.voiceURI;
-      opt.textContent = v.name + ' (' + v.lang + ')';
-      if (v.voiceURI === chosenVoiceURI) opt.selected = true;
-      sel.appendChild(opt);
-    });
-  }
-  if (window.speechSynthesis) {
-    populateVoices();
-    window.speechSynthesis.onvoiceschanged = populateVoices;
-  }
-  $('voice-select').addEventListener('change', function () {
-    chosenVoiceURI = this.value;
-    localStorage.setItem('dictation_voice', chosenVoiceURI);
-  });
-  $('rate-range').value = rate;
-  $('rate-value').textContent = rate;
-  $('rate-range').addEventListener('input', function () {
-    rate = parseFloat(this.value);
-    $('rate-value').textContent = rate.toFixed(1);
-    localStorage.setItem('dictation_rate', rate);
-  });
 
   /* ---------- Результат раунда ---------- */
 
   function showRoundResult() {
     showView('view-round-result');
     var idx = lastHandledIndex;
-    var result = lastRoundResult || Dictation.scoreRound(session.sentences[idx] || '', answers[idx] || '', 0);
-    $('round-result-num').textContent = (idx + 1) + ' из ' + session.sentences.length;
+    var pair = session.pairs[idx] || {};
+    var result = lastRoundResult || Dictation.scoreWordRound(pair.en, answers[idx] || '', 0);
+    $('round-result-num').textContent = (idx + 1) + ' из ' + session.pairs.length;
+    $('round-result-icon').textContent = result.correct ? '✅' : '❌';
     $('round-points-badge').textContent = '+' + result.points;
-    $('round-points-note').textContent = result.percent + '% слов совпало с оригиналом';
-    var html = '';
-    result.tokens.forEach(function (tok) {
-      var cls = tok.type === 'correct' ? 'tok-correct' : tok.type === 'missing' ? 'tok-missing' : 'tok-extra';
-      html += '<span class="' + cls + '">' + escapeHtml(tok.text) + '</span> ';
-    });
-    $('round-result-diff').innerHTML = html;
+    $('round-points-note').textContent = result.correct ? 'Верно!' : 'Неверно';
+    $('round-correct-answer').textContent = pair.ru + '  →  ' + result.correctAnswer;
     fetchRankAndShow($('round-rank-note'), 'Место в рейтинге сейчас: ');
   }
+
+  $('round-listen-btn').addEventListener('click', function () {
+    var idx = lastHandledIndex;
+    var pair = session ? session.pairs[idx] : null;
+    if (!pair) return;
+    var first = Dictation.alternativesFor(pair.en)[0] || pair.en;
+    Dictation.speak(first, { rate: 0.9 });
+  });
 
   function fetchRankAndShow(el, prefix) {
     if (!sessionCode) return;
@@ -254,34 +212,38 @@
   /* ---------- Итоговые результаты ---------- */
 
   function finalizeResults() {
-    var score = Dictation.scoreDictation(session.sentences, answers);
+    var total = session.pairs.length;
+    var percent = total > 0 ? Math.round((participantCorrectCount / total) * 100) : 0;
     db.collection('sessions').doc(sessionCode).collection('participants').doc(participantId).set({
       answers: answers,
-      score: score.percent,
-      totalWords: score.totalWords,
-      totalCorrect: score.totalCorrect,
+      correctFlags: correctFlags,
+      correctCount: participantCorrectCount,
+      totalWords: total,
+      percent: percent,
       totalPoints: participantTotalPoints,
       finishedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-    renderResults(session.sentences, score);
+    renderResults(session.pairs, answers, correctFlags, participantCorrectCount);
   }
 
-  function renderResults(sentences, score) {
+  function renderResults(pairs, answersList, flags, correctCount) {
     showView('view-results');
-    $('score-badge').textContent = score.percent + '%';
-    $('score-summary').textContent = score.totalCorrect + ' из ' + score.totalWords + ' слов совпадают с оригиналом.';
+    var total = pairs.length;
+    var percent = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    $('score-badge').textContent = correctCount + '/' + total;
+    $('score-summary').textContent = percent + '% слов угадано верно.';
     fetchRankAndShow($('final-points-note'), 'Очки: ' + participantTotalPoints + ' · место в рейтинге: ');
     var list = $('results-list');
     list.innerHTML = '';
-    score.perSentence.forEach(function (d, idx) {
+    pairs.forEach(function (pair, idx) {
+      var ok = !!flags[idx];
       var div = document.createElement('div');
       div.className = 'diff-sentence';
-      var html = '<span class="num">' + (idx + 1) + '.</span>';
-      d.tokens.forEach(function (tok) {
-        var cls = tok.type === 'correct' ? 'tok-correct' : tok.type === 'missing' ? 'tok-missing' : 'tok-extra';
-        html += '<span class="' + cls + '">' + escapeHtml(tok.text) + '</span> ';
-      });
-      div.innerHTML = html;
+      div.innerHTML =
+        '<span class="num">' + (idx + 1) + '.</span> ' +
+        (ok ? '✅' : '❌') + ' <strong>' + escapeHtml(pair.ru) + '</strong> → ' +
+        '<span class="' + (ok ? 'tok-correct' : 'tok-extra') + '">' + escapeHtml(answersList[idx] || '(нет ответа)') + '</span>' +
+        (ok ? '' : ' <span class="muted">(правильно: ' + escapeHtml(Dictation.alternativesFor(pair.en).join(' / ')) + ')</span>');
       list.appendChild(div);
     });
   }

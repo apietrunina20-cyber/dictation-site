@@ -24,6 +24,19 @@
   var lastHandledIndex = -1;
   var submittedThisRound = false;
   var finishedHandled = false;
+  var tabSwitchCount = 0;
+
+  // Если ученик сворачивает вкладку/переключается на другую (например, чтобы
+  // подсмотреть перевод на стороннем сайте) — считаем это и сразу сообщаем
+  // учителю в реальном времени (виден счётчик у него в кабинете).
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && sessionCode && participantId) {
+      tabSwitchCount++;
+      db.collection('sessions').doc(sessionCode).collection('participants').doc(participantId).set({
+        tabSwitches: tabSwitchCount
+      }, { merge: true });
+    }
+  });
 
   showView('view-join');
 
@@ -67,6 +80,7 @@
             roundPointsArr = d.roundPoints || [];
             correctFlags = d.correctFlags || [];
             answers = d.answers || [];
+            tabSwitchCount = d.tabSwitches || 0;
           }
           if (pDoc.exists && pDoc.data().percent !== undefined && pDoc.data().percent !== null) {
             // Уже проходил(а) эту игру — сразу показываем результат.
@@ -221,6 +235,7 @@
       totalWords: total,
       percent: percent,
       totalPoints: participantTotalPoints,
+      tabSwitches: tabSwitchCount,
       finishedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     renderResults(session.pairs, answers, correctFlags, participantCorrectCount);

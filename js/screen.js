@@ -1,7 +1,7 @@
-/* Общий экран для проектора: показывает лобби, ход раунда (без текста
-   предложения — чтобы не подсказывать ученикам) и рейтинг между раундами,
-   а в конце — итоговый рейтинг/подиум. Публичная read-only страница,
-   ничего не пишет в базу. */
+/* Общий экран для проектора: показывает лобби, текущее слово (по-русски —
+   как в Kahoot вопрос на большом экране) и рейтинг между раундами, а в
+   конце — итоговый рейтинг/подиум. Публичная read-only страница, ничего
+   не пишет в базу. */
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
@@ -81,8 +81,9 @@
   }
 
   function renderRound() {
-    var idx = session.currentIndex, total = session.sentences.length;
-    $('round-progress').textContent = 'Предложение ' + (idx + 1) + ' из ' + total;
+    var idx = session.currentIndex, total = session.pairs.length;
+    $('round-progress').textContent = 'Слово ' + (idx + 1) + ' из ' + total;
+    $('round-word').textContent = (session.pairs[idx] || {}).ru || '';
     var list = sortedParticipants();
     var answered = list.filter(function (p) {
       return typeof p.lastAnsweredIndex === 'number' && p.lastAnsweredIndex >= idx;
@@ -91,9 +92,11 @@
   }
 
   function renderReveal() {
-    var idx = session.currentIndex, total = session.sentences.length;
-    $('reveal-progress-screen').textContent = 'Результаты предложения ' + (idx + 1) + ' из ' + total;
-    $('reveal-sentence-text').textContent = session.sentences[idx];
+    var idx = session.currentIndex, total = session.pairs.length;
+    var pair = session.pairs[idx] || {};
+    $('reveal-progress-screen').textContent = 'Результаты слова ' + (idx + 1) + ' из ' + total;
+    var alts = (pair.en || '').split('/').map(function (s) { return s.trim(); }).filter(Boolean).join(' / ');
+    $('reveal-sentence-text').textContent = (pair.ru || '') + '  →  ' + alts;
     $('reveal-leaderboard').innerHTML = leaderboardHtml(sortedParticipants());
   }
 

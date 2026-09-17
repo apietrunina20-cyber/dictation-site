@@ -114,6 +114,27 @@
     return { perSentence: perSentence, totalWords: totalWords, totalCorrect: totalCorrect, percent: percent };
   }
 
+  // Очки за один раунд (как в Kahoot): база за точность (до 800) + бонус за скорость
+  // ответа (до 200, убывает за первые 30 секунд, начисляется только если точность >= 50%).
+  function scoreRound(originalSentence, answerText, elapsedMs) {
+    var d = diffSentence(originalSentence, answerText);
+    var total = d.totalOriginal;
+    var percent = total > 0 ? Math.round((d.correctCount / total) * 100) : 0;
+    var basePoints = Math.round(percent * 8);
+    var speedBonus = 0;
+    if (percent >= 50 && typeof elapsedMs === 'number' && elapsedMs >= 0) {
+      var capped = Math.min(elapsedMs, 30000);
+      speedBonus = Math.round((1 - capped / 30000) * 200);
+    }
+    return {
+      tokens: d.tokens,
+      percent: percent,
+      correctCount: d.correctCount,
+      totalOriginal: total,
+      points: basePoints + speedBonus
+    };
+  }
+
   /* ---------- Синтез речи (Web Speech API) ---------- */
 
   var currentUtterance = null;
@@ -166,10 +187,10 @@
     splitIntoSentences: splitIntoSentences,
     diffSentence: diffSentence,
     scoreDictation: scoreDictation,
+    scoreRound: scoreRound,
     getEnglishVoices: getEnglishVoices,
     speak: speak,
     cancelSpeech: cancelSpeech,
     getParticipantId: getParticipantId
   };
 })(window);
-

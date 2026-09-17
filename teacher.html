@@ -44,11 +44,11 @@
     <div class="card">
       <div class="row" style="align-items:center;">
         <div>
-          <h2 style="margin-bottom:2px;">Библиотека диктантов</h2>
-          <p class="muted" style="margin:0;">Видна только вам. Ученики получают лишь текст конкретного диктанта по ссылке.</p>
+          <h2 style="margin-bottom:2px;">Библиотека словарных викторин</h2>
+          <p class="muted" style="margin:0;">Видна только вам. Ученики получают доступ только к словам конкретной игры по ссылке.</p>
         </div>
         <div style="flex:0 0 auto;">
-          <button class="btn" id="add-text-btn">+ Добавить текст</button>
+          <button class="btn" id="add-text-btn">+ Добавить список слов</button>
         </div>
       </div>
 
@@ -57,7 +57,7 @@
         <div class="row">
           <div class="field">
             <label>Название</label>
-            <input type="text" id="new-title" placeholder="Например: Present Simple — про распорядок дня">
+            <input type="text" id="new-title" placeholder="Например: Еда — базовая лексика">
           </div>
           <div class="field" style="max-width:200px;">
             <label>Уровень</label>
@@ -68,8 +68,9 @@
           </div>
         </div>
         <div class="field">
-          <label>Текст диктанта</label>
-          <textarea id="new-text" rows="6" placeholder="Вставьте текст на английском. Он будет автоматически разбит на предложения."></textarea>
+          <label>Список слов</label>
+          <textarea id="new-text" rows="8" placeholder="По одному слову на строку: русское слово - английский перевод&#10;Например:&#10;стол - table&#10;быстрый - quick / fast&#10;яблоко - apple"></textarea>
+          <p class="muted" style="margin-top:6px;">Разделитель — «-», «—», «:» или «=» с пробелами по бокам (или таб). Несколько вариантов ответа — через «/».</p>
         </div>
         <div class="row">
           <button class="btn secondary" id="cancel-text-btn">Отмена</button>
@@ -78,15 +79,15 @@
       </div>
 
       <div id="texts-list" style="margin-top:18px;"></div>
-      <div id="texts-empty" class="empty-state" style="display:none;">Пока нет ни одного текста. Добавьте первый диктант.</div>
+      <div id="texts-empty" class="empty-state" style="display:none;">Пока нет ни одного списка слов. Добавьте первый.</div>
     </div>
 
     <div class="card" id="session-card" style="display:none;">
       <div id="session-none">
-        <h2>Провести диктант</h2>
-        <p class="muted">Выберите текст из библиотеки и создайте сессию — ученики подключатся по ссылке.</p>
+        <h2>Начать игру</h2>
+        <p class="muted">Выберите список слов из библиотеки и создайте сессию — ученики подключатся по ссылке.</p>
         <div class="field">
-          <label>Текст диктанта</label>
+          <label>Список слов</label>
           <select id="session-text-select"></select>
         </div>
         <button class="btn block" id="create-session-btn">Создать сессию</button>
@@ -108,41 +109,38 @@
         <div class="divider"></div>
 
         <div id="controls-waiting">
-          <p class="muted">Отправьте ссылку ученикам. Как только они подключатся, вы увидите их ниже. Начните диктант, когда все будут готовы.</p>
-          <button class="btn success block" id="start-session-btn">▶ Начать диктант</button>
+          <p class="muted">Отправьте ссылку ученикам. Как только они подключатся, вы увидите их ниже. Начните игру, когда все будут готовы.</p>
+          <button class="btn success block" id="start-session-btn">▶ Начать игру</button>
         </div>
 
         <div id="controls-playing" style="display:none;">
           <div class="sentence-progress" id="sentence-progress"></div>
           <div class="answered-big" id="answered-count" style="font-size:15px; margin-top:0;"></div>
           <div class="card" style="background:var(--surface-muted); box-shadow:none; padding:16px;">
-            <p class="muted" style="margin:0 0 4px;">Текущее предложение (видно только вам):</p>
+            <p class="muted" style="margin:0 0 4px;">Текущее слово (видно только вам):</p>
             <p style="font-size:17px; font-weight:600; margin:0;" id="current-sentence-text"></p>
           </div>
-          <div class="row" style="margin-top:14px;">
-            <button class="btn secondary" id="repeat-sentence-btn">🔁 Повторить</button>
-            <button class="btn" id="reveal-round-btn">📊 Показать результаты раунда</button>
-          </div>
+          <button class="btn block" id="reveal-round-btn" style="margin-top:14px;">📊 Показать результаты раунда</button>
         </div>
 
         <div id="controls-reveal" style="display:none;">
           <div class="sentence-progress" id="reveal-progress"></div>
-          <p class="muted center">Рейтинг показан на общем экране (если он открыт на проекторе). Ниже — тот же рейтинг у вас.</p>
-          <button class="btn block" id="next-sentence-btn">➡ Следующее предложение</button>
+          <p class="muted center">Правильный ответ и рейтинг показаны на общем экране (если он открыт на проекторе). Ниже — тот же рейтинг у вас.</p>
+          <button class="btn block" id="next-sentence-btn">➡ Следующее слово</button>
         </div>
 
         <div id="controls-finished" style="display:none;">
-          <p class="muted">Диктант завершён. Ниже — итоговый рейтинг и результаты учеников.</p>
+          <p class="muted">Игра завершена. Ниже — итоговый рейтинг и результаты учеников.</p>
         </div>
 
-        <button class="btn danger block" id="finish-session-btn" style="margin-top:10px; display:none;">🏁 Завершить диктант сейчас</button>
+        <button class="btn danger block" id="finish-session-btn" style="margin-top:10px; display:none;">🏁 Завершить игру сейчас</button>
 
         <div class="divider"></div>
         <h3>Ученики / рейтинг</h3>
         <div id="participants-list"></div>
         <div id="participants-empty" class="empty-state" style="display:none; padding:16px;">Пока никто не подключился.</div>
 
-        <button class="btn secondary block" id="new-session-btn" style="margin-top:16px;">Новая сессия / другой текст</button>
+        <button class="btn secondary block" id="new-session-btn" style="margin-top:16px;">Новая сессия / другой список слов</button>
       </div>
     </div>
   </div>
